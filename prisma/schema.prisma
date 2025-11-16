@@ -25,6 +25,8 @@ model User {
 
   image     String? 
 
+  hashedRefreshToken String? @db.Text
+
   deletedAt DateTime?
   createdById Int?
   createdBy   User? @relation("UsersCreated", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
