@@ -20,11 +20,8 @@ model User {
   email     String   @unique
   password  String
   name      String?
-
   role      Role     @default(SUBSCRIBER) // Default user baru adalah SUBSCRIBER
-
   image     String? 
-
   hashedRefreshToken String? @db.Text
 
   deletedAt DateTime?
@@ -40,4 +37,26 @@ model User {
   usersCreated User[] @relation("UsersCreated")
   usersUpdated User[] @relation("UsersUpdated")
   usersDeleted User[] @relation("UsersDeleted")
+  posts Post[]  @relation("UserPosts")
+  updatedPosts  Post[] @relation("UpdatedPosts")
+  deletedPosts  Post[]  @relation("DeletedPosts")
+}
+
+model Post{
+  id  Int @id @default(autoincrement())
+  title String
+  slug  String @unique
+  content Json
+  published Boolean @default(false)
+
+  author  User  @relation("UserPosts", fields: [authorId], references: [id])
+  authorId  Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  updatedById Int?
+  updatedBy User?  @relation("UpdatedPosts", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deletedById Int?
+  deletedBy User?  @relation("DeletedPosts", fields: [deletedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
 }
