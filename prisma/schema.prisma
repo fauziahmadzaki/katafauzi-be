@@ -1,0 +1,41 @@
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+enum Role {
+  ADMIN      
+  AUTHOR     
+  SUBSCRIBER 
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+
+  role      Role     @default(SUBSCRIBER) // Default user baru adalah SUBSCRIBER
+
+  image     String? 
+
+  deletedAt DateTime?
+  createdById Int?
+  createdBy   User? @relation("UsersCreated", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedById Int?
+  updatedBy   User? @relation("UsersUpdated", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deletedById Int?
+  deletedBy   User? @relation("UsersDeleted", fields: [deletedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  usersCreated User[] @relation("UsersCreated")
+  usersUpdated User[] @relation("UsersUpdated")
+  usersDeleted User[] @relation("UsersDeleted")
+}
