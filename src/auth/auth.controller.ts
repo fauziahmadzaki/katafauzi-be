@@ -13,12 +13,14 @@ import { AuthService } from './auth.service';
 import { RegisterAuthDto } from './dto/register-auth.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @ResponseMessage('Account Created Successfully')
   async register(
     @Body(new ValidationPipe())
     dto: RegisterAuthDto,
@@ -28,6 +30,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
+  @ResponseMessage('Login Success')
   async login(
     @Body(new ValidationPipe())
     dto: LoginAuthDto,
@@ -51,6 +54,7 @@ export class AuthController {
   }
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
+  @ResponseMessage('Logouted')
   @HttpCode(HttpStatus.OK)
   async logout(@Request() req) {
     await this.authService.logout(req.user.id);

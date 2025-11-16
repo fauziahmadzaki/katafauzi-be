@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -82,24 +86,72 @@ export class PostsService {
     const totalPages = Math.ceil(total / take);
 
     return {
-      data: posts,
-      meta: {},
-      totalItems: total,
-      itemsPerPage: take,
-      totalPages,
-      search,
+      items: posts,
+      meta: {
+        totalItems: total,
+        itemsPerPage: take,
+        totalPages,
+        search,
+      },
     };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} post`;
+  async findOne(slug: string) {
+    const post = await this.prisma.post.findUnique({
+      where: { slug: slug },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    if (!post) {
+      throw new BadRequestException('Post not found');
+    }
+
+    return post;
   }
 
-  update(id: number, updatePostDto: UpdatePostDto) {
-    return `This action updates a #${id} post`;
+  async update(slug: string, updatePostDto: UpdatePostDto, userId: number) {
+    const post = await this.prisma.post.findUnique({
+      where: { slug: slug },
+    });
+
+    if (!post) {
+      throw new BadRequestException('Post not found');
+    }
+
+    try {
+      return await this.prisma.post.update({
+        where: { slug: slug },
+        data: { ...updatePostDto, authorId: userId },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException('Post with those slug already exists');
+        }
+      }
+      throw new BadRequestException('Failed to update post');
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} post`;
+  async remove(slug: string, userId: number) {
+    const post = await this.prisma.post.update({
+      where: {
+        slug: slug,
+      },
+      data: {
+        deletedAt: new Date(),
+        deletedById: userId,
+      },
+    });
+
+    return post;
   }
 }

@@ -16,6 +16,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 
 @Controller('posts')
 export class PostsController {
@@ -29,6 +30,7 @@ export class PostsController {
   }
 
   @Get()
+  @ResponseMessage('Data fetched successfully')
   findAll(
     @Query(
       new ValidationPipe({
@@ -42,18 +44,30 @@ export class PostsController {
     return this.postsService.findAll(dto);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.postsService.findOne(+id);
+  @Get(':slug')
+  @ResponseMessage('Data fetched successfully')
+  findOne(@Param('slug') slug: string) {
+    return this.postsService.findOne(slug);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
-    return this.postsService.update(+id, updatePostDto);
+  @Patch(':slug')
+  @ResponseMessage('Post updated successfully')
+  @UseGuards(AuthGuard('jwt'))
+  update(
+    @Param('slug') slug: string,
+    @Body() updatePostDto: UpdatePostDto,
+    @Request() req,
+  ) {
+    const userId = req.user.id;
+
+    return this.postsService.update(slug, updatePostDto, userId);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.postsService.remove(+id);
+  @Delete(':slug')
+  @ResponseMessage('Post deleted successfully')
+  @UseGuards(AuthGuard('jwt'))
+  remove(@Param('slug') slug: string, @Request() req) {
+    const userId = req.user.id;
+    return this.postsService.remove(slug, userId);
   }
 }

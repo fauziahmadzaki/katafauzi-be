@@ -55,13 +55,13 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Email atau password salah');
+      throw new UnauthorizedException('Wrong email or password!');
     }
 
     const isPasswordMatch = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordMatch) {
-      throw new UnauthorizedException('Email atau password salah');
+      throw new UnauthorizedException('Wrong email or password!');
     }
     const tokens = await this._generateToken(user);
     const { password, hashedRefreshToken, ...result } = user;
@@ -77,7 +77,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('User already exists');
+      throw new ConflictException('User already exists!');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -96,7 +96,7 @@ export class AuthService {
 
       return { user, tokens };
     } catch (error) {
-      throw new BadRequestException('Failed to create user');
+      throw new BadRequestException('Failed to create user!');
     }
   }
 
@@ -104,7 +104,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id } });
 
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException('User not found!');
     }
 
     const tokens = await this._generateToken(user);
