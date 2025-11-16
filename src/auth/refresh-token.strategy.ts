@@ -1,16 +1,12 @@
-// File: src/auth/refresh-token.strategy.ts
-
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PrismaService } from '../prisma/prisma.service'; // Pastikan path prisma/ benar
+import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
-// 1. UBAH NAMA KELAS
-// 2. BERI NAMA UNIK 'jwt-refresh'
 export class RefreshTokenStrategy extends PassportStrategy(
   Strategy,
   'jwt-refresh',
@@ -63,9 +59,7 @@ export class RefreshTokenStrategy extends PassportStrategy(
 
     if (!isTokenMatch)
       throw new UnauthorizedException('Akses ditolak (token tidak cocok)');
-
-    // Hapus data sensitif sebelum dikembalikan
     const { password, hashedRefreshToken, ...result } = user;
-    return result; // Kembalikan seluruh data user (tanpa password/hash)
+    return result;
   }
 }
