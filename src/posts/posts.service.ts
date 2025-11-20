@@ -1,7 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
+  InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -16,7 +19,7 @@ export class PostsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createPostDto: CreatePostDto, userId: number) {
-    const { title, content, published } = createPostDto;
+    const { title, content, published, categories } = createPostDto;
 
     const slug = slugify(title, {
       lower: true,
@@ -32,10 +35,26 @@ export class PostsService {
           authorId: userId,
           published: published || false,
           content,
+          categories: {
+            connect: categories?.map((id) => ({ id: id })),
+          },
+        },
+        include: {
+          categories: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       });
     } catch (error) {
-      throw new BadRequestException('Failed to create post');
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException('Post with this title already exists');
+        }
+      }
+      throw new InternalServerErrorException('Internal server error');
     }
   }
 
@@ -55,56 +74,74 @@ export class PostsService {
       };
     }
 
-    const [posts, total] = await this.prisma.$transaction([
-      this.prisma.post.findMany({
-        where: whereClause,
-        skip: skip,
-        take: take,
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          createdAt: true,
-
-          author: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
+    try {
+      const [posts, total] = await this.prisma.$transaction([
+        this.prisma.post.findMany({
+          where: whereClause,
+          skip: skip,
+          take: take,
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            createdAt: true,
+            updatedAt: true,
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              },
+            },
+            categories: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
             },
           },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      this.prisma.post.count({
-        where: whereClause,
-      }),
-    ]);
+          orderBy: {
+            createdAt: 'desc',
+          },
+        }),
+        this.prisma.post.count({
+          where: whereClause,
+        }),
+      ]);
 
-    const totalPages = Math.ceil(total / take);
+      const totalPages = Math.ceil(total / take);
 
-    return {
-      items: posts,
-      meta: {
-        totalItems: total,
-        itemsPerPage: take,
-        totalPages,
-        search,
-      },
-    };
+      return {
+        items: posts,
+        meta: {
+          totalItems: total,
+          itemsPerPage: take,
+          totalPages,
+          search,
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Internal server error!');
+    }
   }
 
-  async findOne(slug: string) {
+  async findOne(id: number) {
     const post = await this.prisma.post.findUnique({
-      where: { slug: slug },
+      where: { id: id },
       include: {
         author: {
           select: {
             id: true,
             name: true,
             image: true,
+          },
+        },
+        categories: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -117,19 +154,50 @@ export class PostsService {
     return post;
   }
 
-  async update(slug: string, updatePostDto: UpdatePostDto, userId: number) {
+  async update(id: number, updatePostDto: UpdatePostDto, userId: number) {
     const post = await this.prisma.post.findUnique({
-      where: { slug: slug },
+      where: { id },
     });
 
     if (!post) {
-      throw new BadRequestException('Post not found');
+      throw new NotFoundException('Post not found');
     }
 
+    if (post.authorId !== userId) {
+      throw new ForbiddenException('You are not allowed to update this post');
+    }
+    const { categories, ...rest } = updatePostDto;
+
+    const newData: Prisma.PostUncheckedUpdateInput = { ...rest };
+
+    if (updatePostDto.title) {
+      newData.slug = slugify(updatePostDto.title, {
+        lower: true,
+        strict: true,
+        trim: true,
+      });
+    }
+
+    if (categories) {
+      newData.categories = {
+        set: categories.map((id) => ({ id })),
+      };
+    }
     try {
       return await this.prisma.post.update({
-        where: { slug: slug },
-        data: { ...updatePostDto, authorId: userId },
+        where: { id },
+        data: {
+          ...newData,
+          updatedById: userId,
+        },
+        include: {
+          categories: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -137,14 +205,14 @@ export class PostsService {
           throw new ConflictException('Post with those slug already exists');
         }
       }
-      throw new BadRequestException('Failed to update post');
+      throw new InternalServerErrorException('Internal server error!');
     }
   }
 
-  async remove(slug: string, userId: number) {
+  async remove(id: number, userId: number) {
     const post = await this.prisma.post.update({
       where: {
-        slug: slug,
+        id,
       },
       data: {
         deletedAt: new Date(),

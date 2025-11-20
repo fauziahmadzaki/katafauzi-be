@@ -64,9 +64,14 @@ export class AuthService {
       throw new UnauthorizedException('Wrong email or password!');
     }
     const tokens = await this._generateToken(user);
-    const { password, hashedRefreshToken, ...result } = user;
+    const result = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
 
-    return { result, tokens };
+    return { user: result, tokens };
   }
 
   async register(dto: RegisterAuthDto) {

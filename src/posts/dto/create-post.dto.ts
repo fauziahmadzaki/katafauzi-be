@@ -1,5 +1,7 @@
 import {
+  IsArray,
   IsBoolean,
+  IsInt,
   IsNotEmpty,
   IsObject,
   IsOptional,
@@ -18,4 +20,9 @@ export class CreatePostDto {
   @IsBoolean()
   @IsOptional()
   published?: boolean;
+
+  @IsArray()
+  @IsOptional()
+  @IsInt({ each: true })
+  categories?: number[];
 }

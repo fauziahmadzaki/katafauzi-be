@@ -44,30 +44,30 @@ export class PostsController {
     return this.postsService.findAll(dto);
   }
 
-  @Get(':slug')
+  @Get(':id')
   @ResponseMessage('Data fetched successfully')
-  findOne(@Param('slug') slug: string) {
-    return this.postsService.findOne(slug);
+  findOne(@Param('id') id: number) {
+    return this.postsService.findOne(+id);
   }
 
-  @Patch(':slug')
+  @Patch(':id')
   @ResponseMessage('Post updated successfully')
   @UseGuards(AuthGuard('jwt'))
   update(
-    @Param('slug') slug: string,
+    @Param('id') id: number,
     @Body() updatePostDto: UpdatePostDto,
     @Request() req,
   ) {
     const userId = req.user.id;
 
-    return this.postsService.update(slug, updatePostDto, userId);
+    return this.postsService.update(+id, updatePostDto, userId);
   }
 
-  @Delete(':slug')
+  @Delete(':id')
   @ResponseMessage('Post deleted successfully')
   @UseGuards(AuthGuard('jwt'))
-  remove(@Param('slug') slug: string, @Request() req) {
+  remove(@Param('id') id: number, @Request() req) {
     const userId = req.user.id;
-    return this.postsService.remove(slug, userId);
+    return this.postsService.remove(+id, userId);
   }
 }
